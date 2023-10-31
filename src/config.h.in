@@ -1,0 +1,2 @@
+#pragma once
+#define RESOURCE_PATH "@RESOURCE_PATH@"
