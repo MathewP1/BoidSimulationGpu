@@ -1,4 +1,6 @@
 #include <iostream>
+#include <chrono>
+
 
 #include "GL/glew.h"
 #include "GLFW/glfw3.h"
@@ -9,6 +11,10 @@
 
 #include "config.h"
 #include "gl_util.h"
+#include "simulation.h"
+
+constexpr float kWindowWidth = 1500;
+constexpr float kWindowHeight = 1200;
 
 int main(void) {
   GLFWwindow* window;
@@ -24,10 +30,8 @@ int main(void) {
   glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
   /* Create a windowed mode window and its OpenGL context */
-  float window_width = 1500;
-  float window_height = 1200;
   window =
-      glfwCreateWindow(window_width, window_height, "Hello World", NULL, NULL);
+      glfwCreateWindow(kWindowWidth, kWindowHeight, "Hello World", NULL, NULL);
   if (!window) {
     glfwTerminate();
     return -1;
@@ -35,7 +39,6 @@ int main(void) {
 
   /* Make the window's context current */
   glfwMakeContextCurrent(window);
-  glfwSwapInterval(1);
 
   // Init glew to link to OpenGL implementation
   if (glewInit() != GLEW_OK) {
@@ -58,13 +61,56 @@ int main(void) {
   ImGui_ImplOpenGL3_Init(glsl_version);
   ImGui::StyleColorsDark();
 
+  int width, height;
+  glfwGetFramebufferSize(window, &width, &height);
+
+
+  // init simulation
+  Simulation sim(width, height);
+  sim.SetupGl();
+  sim.GenerateParticles(100000);
+
+
+  auto last_timestamp = std::chrono::high_resolution_clock::now();
+  unsigned int frame_count = 0;
+  unsigned int fps = 0;
+  auto accumulated_time = std::chrono::duration<float>(0);
+
   /* Loop until the user closes the window */
   while (!glfwWindowShouldClose(window)) {
     /* Render here */
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    // Begin rendering scene here
+    // calculate FPS
+    auto current_timestamp = std::chrono::high_resolution_clock::now();
+    auto delta = current_timestamp - last_timestamp;
+    accumulated_time += delta;
+    auto delta_sec = std::chrono::duration<float>(delta).count();
 
+    // Calculate FPS
+    if (accumulated_time >= std::chrono::seconds(1)) {
+      fps = frame_count;
+      accumulated_time -= std::chrono::seconds(1);  // instead of resetting to zero
+      frame_count = 0;
+    }
+    frame_count++;
+
+    last_timestamp = current_timestamp;
+
+    int width, height;
+    glfwGetFramebufferSize(window, &width, &height);
+    std::cout << width << " " << height << std::endl;
+    sim.SetCanvasDimensions(width, height);
+
+    double x, y;
+    glfwGetCursorPos(window, &x, &y);
+    sim.SetMousePos(x, y);
+
+    int state = glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT);
+    sim.SetMouseClicked(state == GLFW_PRESS);
+
+    // Begin rendering scene here
+    sim.Render(delta_sec);
     // End rendering scene here
 
     ImGui_ImplOpenGL3_NewFrame();
@@ -73,6 +119,7 @@ int main(void) {
 
     ImGui::Begin("Scene");
     // Render UI elements here
+    ImGui::Text("FPS: %i", fps);
     ImGui::End();
 
     ImGui::Render();

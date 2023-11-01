@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.23)
-project(OpenGL_cmake
+project(BoidSimulationGpu
         VERSION 0.1
         DESCRIPTION "Template for cross-platform OpenGL cmake project"
         LANGUAGES CXX)
@@ -20,7 +20,9 @@ configure_file(src/config.h.in src/config.h)
 
 set(SOURCE_FILES
         "src/gl_util.h" "src/gl_util.cpp"
-       )
+        src/simulation.cpp
+        src/simulation.h
+)
 
 add_executable(OpenGL_cmake src/main.cpp ${SOURCE_FILES})
 
