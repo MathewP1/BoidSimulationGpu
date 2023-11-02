@@ -30,7 +30,7 @@ class Simulation {
 
  private:
   int width_, height_;
-  float mouse_x_, mouse_y_;
+  float mouse_x_{0.0f}, mouse_y_{0.0f};
   bool mouse_clicked_;
   struct Gl {
     GLuint compute_program, render_program;

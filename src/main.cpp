@@ -97,9 +97,7 @@ int main(void) {
 
     last_timestamp = current_timestamp;
 
-    int width, height;
     glfwGetFramebufferSize(window, &width, &height);
-    std::cout << width << " " << height << std::endl;
     sim.SetCanvasDimensions(width, height);
 
     double x, y;

@@ -21,6 +21,7 @@ in vec2 oldVelocity;
 
 uniform float deltaTime;
 uniform vec2 canvasDimensions;
+uniform vec3 mousePos;
 
 out vec4 newPosition;
 
@@ -29,7 +30,12 @@ vec2 wrap(vec2 pos, vec2 screen) {
 }
 
 void main() {
-  vec2 pos = oldPosition.xy + oldVelocity.xy * deltaTime;
+  float mouseFactor = 300.0f;
+  vec2 target = mousePos.xy - oldPosition.xy;
+  vec2 direction = normalize(target);
+  vec2 newVelocity = oldVelocity.xy + direction * mouseFactor * mousePos.z;
+
+  vec2 pos = oldPosition.xy + newVelocity * deltaTime;
 
   newPosition = vec4(mod(pos.xy, canvasDimensions), oldPosition.z, oldPosition.w);
 }
@@ -193,11 +199,11 @@ bool Simulation::SetupGl() {
   GL_CALL(gl_.velocity_location = glGetAttribLocation(gl_.compute_program, "oldVelocity"));
   GL_CALL(gl_.delta_location = glGetUniformLocation(gl_.compute_program, "deltaTime"));
   GL_CALL(gl_.canvas_dimensions_location = glGetUniformLocation(gl_.compute_program, "canvasDimensions"));
-//  GL_CALL(gl_.mouse_pos_location = glGetUniformLocation(gl_.compute_program, "mousePos"));
 
   GL_CALL(glUseProgram(gl_.render_program));
   GL_CALL(gl_.matrix_location = glGetUniformLocation(gl_.render_program, "transform"));
   GL_CALL(gl_.position_location = glGetAttribLocation(gl_.render_program, "position"));
+  GL_CALL(gl_.mouse_pos_location = glGetUniformLocation(gl_.compute_program, "mousePos"));
 
   GL_CALL(glEnable(GL_PROGRAM_POINT_SIZE));
 
@@ -229,6 +235,7 @@ void Simulation::GenerateParticles(unsigned int count) {
   for (unsigned i = 0; i < count; i++) {
     positions_.push_back(randomPosFloat(width_ / 2.0 - 100, width_ / 2.0 + 100));
     positions_.push_back(randomPosFloat(height_ / 2.0 - 100, height_ / 2.0 + 100));
+    // position.z is used for point size
     positions_.push_back(randomInt(1, 8));
     velocities_.push_back(randomPosFloat(-300, 300));
     velocities_.push_back(randomPosFloat(-300, 300));
@@ -299,6 +306,12 @@ void Simulation::Render(float deltaTime) {
    GL_CALL(glUniform2f(gl_.canvas_dimensions_location, width_, height_));
    GL_CALL(glUniform1f(gl_.delta_location, deltaTime));
 
+      if (mouse_x_ >= 0 && mouse_x_ < width_ && mouse_y_ >= 0 && mouse_y_ < height_ && mouse_clicked_) {
+        GL_CALL(glUniform3f(gl_.mouse_pos_location, mouse_x_, mouse_y_, 1.0));
+      } else {
+        GL_CALL(glUniform3f(gl_.mouse_pos_location, mouse_x_, mouse_y_, 0.0));
+      }
+
    GL_CALL(glEnable(GL_RASTERIZER_DISCARD));
 
    GL_CALL(glBindTransformFeedback(GL_TRANSFORM_FEEDBACK, current_.tf));
@@ -314,13 +327,8 @@ void Simulation::Render(float deltaTime) {
 
    GL_CALL(glViewport(0, 0, width_, height_));
 
-//   if (mouse_x_ >= 0 && mouse_x_ < width_ && mouse_y_ >= 0 && mouse_y_ < height_ && mouse_clicked_) {
-//    GL_CALL(glUniform3f(gl_.mouse_pos_location, mouse_x_, mouse_y_, 1.0));
-//   } else {
-//    GL_CALL(glUniform3f(gl_.mouse_pos_location, mouse_x_, mouse_y_, 0.0));
-//   }
+   glm::mat4 mat = glm::ortho(0.0f, (float)width_, (float)height_, 0.0f, -1.0f, 1.0f);
 
-   glm::mat4 mat = glm::ortho(0.0f, (float)width_, 0.0f, (float)height_, -1.0f, 1.0f);
    GL_CALL(glUniformMatrix4fv(gl_.matrix_location, 1, GL_FALSE, glm::value_ptr(mat)));
    GL_CALL(glDrawArrays(GL_POINTS, 0, particles_count_));
 
